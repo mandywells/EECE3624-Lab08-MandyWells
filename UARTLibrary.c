@@ -3,8 +3,8 @@
  *  Lab Name: (Needed for Lab07 and Lab08)
  *    Author: Dr. Greg Nordstrom
  *   Created: 3/3/2019
- *  Modified: 
- *  Mod Date:
+ *  Modified: Mandy Wells
+ *  Mod Date: 10/20/2026
  * Processor: ATmega128A (on the ReadyAVR board)
  *
  * This is intended to be compiled as an AVR Library Project and
@@ -34,16 +34,44 @@
 // sets the baudrate to 9600, with 8 data bits, 1 stop bit, and no parity
 void uart_init(long unsigned int baudrate, unsigned char databits, unsigned char stopbits, unsigned char parity) {
     /* your code here */
+	unsigned int ubbr = ((7372800UL / (baudrate * 16UL)) - 1);
+	
 	// set baud rate (via UBRR0 high and low registers)
-    
+    UBRR1H = (unsigned char)(ubbr >> 8);
+	UBRR1L = (unsigned char)ubbr;
+	
 	// set databits
+	UCSR1B &= ~(1 << UCSZ12); // 0 for both 7 and 8
+	if(databits == 7){
+		UCSR1C |= (1 << UCSZ11);
+		UCSR1C &= ~(1 << UCSZ10);
+	}
+	else{
+		UCSR1C |= (1 << UCSZ11) | (1 << UCSZ10);
+	}
     
 	// set parity
-    
+	//00 = disabled, 10 = enabled + even, 11 = enabled + odd
+	UCSR1C &= ~(1 << UPM10); 
+	UCSR1C &= ~(1 << UPM11);
+	
+	if(parity == 1){
+		UCSR1C |= (1 << UPM11) | (1 << UPM10);
+	}
+	else if(parity == 2){
+		UCSR1C |= (1 << UPM11);
+	}
+
     // set stopbits
-    
+	UCSR1C &= ~(1 << USBS1); // 0 for 1 stop bit, 1 for 2 stop bits
+	
+	if(stopbits == 2){
+		UCSR1C |= (1 << USBS1);
+	}
+	
 	// finally, enable receiver and transmitter
-    
+	// 1 enables the USARTm receiver and 1 enables the transmitter
+	UCSR1B |= (1 << RXEN1) | (1 << TXEN1); //bit 4 = RXEN1, bit 3 = TXEN1
 }
 
 // This function waits for space in the USART transmit buffer. When space
@@ -52,7 +80,8 @@ void uart_init(long unsigned int baudrate, unsigned char databits, unsigned char
 // checking is performed and the function does not return a value.
 void uart_tx(unsigned char data) {
     /* your code here */
-
+	while(!(UCSR1A & (1 << UDRE1))){}
+	UDR1 = data;
 }
 
 // This function blocks until a character is received in the USART input
@@ -60,5 +89,6 @@ void uart_tx(unsigned char data) {
 // an unsigned character. No error checking is performed.
 unsigned char uart_rx(void) {
 	/* your code here */
-    
+    while(!(UCSR1A & (1 << RXC1))){}
+	return UDR1;
 }
